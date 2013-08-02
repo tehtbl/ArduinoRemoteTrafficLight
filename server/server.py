@@ -7,6 +7,7 @@ from optparse import OptionParser
 
 parser = OptionParser(usage="usage: %prog [options] arg1 arg2")
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="verbose on")
+parser.add_option("-i", "--interactive", action="store_true", dest="interactive", default=False, help="interactive mode on")
 parser.add_option("-d", "--device", dest="device", type="string", help="tty to interact with Arduino")
 parser.add_option("-p", "--port", dest="port", default=8585, type="int", help="port number to run on")
 parser.add_option("-c", "--command", dest="cmd", type="string", help="string to send")
@@ -27,12 +28,64 @@ if __name__ == "__main__":
 
     print "trying to connect to arduino via %s" % (opts.device)
 
-    try:
-        ser = serial.Serial(opts.device, 9600)
-        print "sending command: '%s'" % (opts.cmd)
-        ser.writeln(opts.cmd)
-        while True:
-            print ser.readline().strip()
-    except:
-        pass
+#    try:
+    ser = serial.Serial(opts.device, 9600)
+    print "sending command: '%s'" % (opts.cmd)
+    ser.write(opts.cmd)
+#    while True:
+#    print ser.readline().strip()
+#    except:
+#        pass
+
+import readline
+import logging
+
+LOG_FILENAME = '/tmp/completer.log'
+logging.basicConfig(filename=LOG_FILENAME,
+level=logging.DEBUG,
+)
+
+class SimpleCompleter(object):
+
+def __init__(self, options):
+self.options = sorted(options)
+return
+
+def complete(self, text, state):
+response = None
+if state == 0:
+# This is the first time for this text, so build a match list.
+if text:
+self.matches = [s
+for s in self.options
+if s and s.startswith(text)]
+logging.debug('%s matches: %s', repr(text), self.matches)
+else:
+self.matches = self.options[:]
+logging.debug('(empty input) matches: %s', self.matches)
+
+# Return the state'th item from the match list,
+# if we have that many.
+try:
+response = self.matches[state]
+except IndexError:
+response = None
+logging.debug('complete(%s, %s) => %s',
+repr(text), state, repr(response))
+return response
+
+def input_loop():
+line = ''
+while line != 'stop':
+line = raw_input('Prompt ("stop" to quit): ')
+print 'Dispatch %s' % line
+
+# Register our completer function
+readline.set_completer(SimpleCompleter(['start', 'stop', 'list', 'print']).complete)
+
+# Use the tab key for completion
+readline.parse_and_bind('tab: complete')
+
+# Prompt the user for text
+input_loop()
 
